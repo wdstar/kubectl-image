@@ -1,0 +1,34 @@
+---
+# Concourse pipeline: kubectl-image
+#   $ fly -t target sp -p kubectl-image -c concourse.yml -l fly-vars.yml -l ~/credentials.yml
+resources:
+- name: src-git
+  type: git
+  source:
+    uri: https://github.com/wdstar/kubectl-image
+    branch: master
+- name: docker-reg
+  type: docker-image
+  source:
+    repository: ((docker-id))/((name))
+    #repository: gitlab.io.example.com:5050/base/images/((name))
+    tag: ((tag))  # default: latest
+    username: ((docker-id))
+    password: ((docker-pw))
+    #ca_certs:
+    #  - domain: gitlab.io.example.com:5050
+    #    cert: ((docker-reg-ca-cert))
+
+jobs:
+- name: build-img
+  plan:
+  - get: src-git
+    trigger: false
+  - put: docker-reg
+    params:
+      build: src-git
+      build_args:
+        KUBECTL_VER: ((kubectl-ver))
+      tag_as_latest: true  # default: false
+    get_params:
+      skip_download: true  # default: false
