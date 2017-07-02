@@ -3,6 +3,7 @@ kubectl Docker image
 
 ## Contents
 
+This image is alpine + bash + kubectl.
 
 ## License and Authors
 

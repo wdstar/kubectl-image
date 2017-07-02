@@ -7,12 +7,21 @@ resources:
   source:
     uri: https://github.com/wdstar/kubectl-image
     branch: master
+- name: base-image
+  type: docker-image
+  source:
+    repository: alpine
+    tag: latest
+    registry_mirror: https://((registry-mirror-domain))  # e.g. https://registry.docker.example.com:5000
+    ca_certs:
+    - domain: ((registry-mirror-domain))  # e.g. registry.docker.example.com:5000
+      cert: ((docker-reg-ca-cert))
 - name: docker-reg
   type: docker-image
   source:
     repository: ((docker-id))/((name))
     #repository: gitlab.io.example.com:5050/base/images/((name))
-    tag: ((tag))  # default: latest
+    #tag: latest
     username: ((docker-id))
     password: ((docker-pw))
     #ca_certs:
@@ -24,11 +33,15 @@ jobs:
   plan:
   - get: src-git
     trigger: false
+  - get: base-image
+    params:
+      skip_download: true  # default: false
+    trigger: true
   - put: docker-reg
     params:
       build: src-git
-      build_args:
-        KUBECTL_VER: ((kubectl-ver))
+      build_args_file: src-git/build-args.json
+      tag: src-git/tag
       tag_as_latest: true  # default: false
     get_params:
       skip_download: true  # default: false
