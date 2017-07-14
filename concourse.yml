@@ -1,6 +1,6 @@
 ---
 # Concourse pipeline: kubectl-image
-#   $ fly -t target sp -p kubectl-image -c concourse.yml -l fly-vars.yml -l ~/credentials.yml
+#   $ fly -t target sp -p kubectl-image -c concourse.yml -l fly-vars.yml -l ~/sec/credentials-prod.yml
 resources:
 - name: src-git
   type: git
@@ -12,10 +12,13 @@ resources:
   source:
     repository: alpine
     tag: latest
-    registry_mirror: https://((registry-mirror-domain))  # e.g. https://registry.docker.example.com:5000
+    registry_mirror: https://((registry-mirror-domain))
+      # e.g. https://registry.docker.example.com:5000
     ca_certs:
-    - domain: ((registry-mirror-domain))  # e.g. registry.docker.example.com:5000
+    - domain: ((registry-mirror-domain))
+      # e.g. registry.docker.example.com:5000
       cert: ((docker-reg-ca-cert))
+  check_every: 1h
 - name: docker-reg
   type: docker-image
   source:
@@ -27,21 +30,44 @@ resources:
     #ca_certs:
     #  - domain: gitlab.io.example.com:5050
     #    cert: ((docker-reg-ca-cert))
+  check_every: 12h
 
 jobs:
 - name: build-img
   plan:
-  - get: src-git
-    trigger: false
-  - get: base-image
-    params:
-      skip_download: true  # default: false
-    trigger: true
+  - aggregate:
+    - get: src-git
+      params:
+        depth: 5
+      trigger: false
+    - get: base-image
+      #params:
+      #  skip_download: true  # default: false
+      trigger: true
+  - task: put-kubectl-ver
+    image: base-image
+    config:
+      platform: linux
+      outputs:
+      - name: kubectl
+      run:
+        path: sh
+        args:
+        - -c
+        - |
+          apk update
+          apk add curl
+          ver=`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt | tr -d 'v'`
+          echo $ver > kubectl/ver
+          echo "{\"KUBECTL_VER\": \"${ver}\"}" > kubectl/build-args.json
+          cat kubectl/build-args.json
   - put: docker-reg
     params:
       build: src-git
-      build_args_file: src-git/build-args.json
-      tag: src-git/tag
+      build_args_file: kubectl/build-args.json
+      #build_args_file: src-git/build-args.json
+      tag: kubectl/ver
+      #tag: src-git/tag
       tag_as_latest: true  # default: false
     get_params:
       skip_download: true  # default: false
