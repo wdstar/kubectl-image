@@ -1,6 +1,17 @@
 ---
 # Concourse pipeline: kubectl-image
 #   $ fly -t target sp -p kubectl-image -c concourse.yml -l fly-vars.yml -l ~/sec/credentials-prod.yml
+resource_types:
+- name: file-url
+  type: docker-image
+  source:
+    repository: pivotalservices/concourse-curl-resource
+    tag: latest
+    registry_mirror: https://((registry-mirror-domain))
+    ca_certs:
+    - domain: ((registry-mirror-domain))
+      cert: ((docker-reg-ca-cert))
+
 resources:
 - name: src-git
   type: git
@@ -18,6 +29,12 @@ resources:
     - domain: ((registry-mirror-domain))
       # e.g. registry.docker.example.com:5000
       cert: ((docker-reg-ca-cert))
+  check_every: 1h
+- name: kubernetes-release
+  type: file-url
+  source:
+    url: https://storage.googleapis.com/kubernetes-release/release/stable.txt  
+    filename: stable.txt
   check_every: 1h
 - name: docker-reg
   type: docker-image
@@ -44,10 +61,14 @@ jobs:
       #params:
       #  skip_download: true  # default: false
       trigger: true
+    - get: kubernetes-release
+      trigger: true
   - task: put-kubectl-ver
     image: base-image
     config:
       platform: linux
+      inputs:
+      - name: kubernetes-release
       outputs:
       - name: kubectl
       run:
@@ -55,9 +76,10 @@ jobs:
         args:
         - -c
         - |
-          apk update
-          apk add curl
-          ver=`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt | tr -d 'v'`
+          #apk update
+          #apk add curl
+          #ver=`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt | tr -d 'v'`
+          ver=`cat kubernetes-release/stable.txt | tr -d 'v'`
           echo $ver > kubectl/ver
           echo "{\"KUBECTL_VER\": \"${ver}\"}" > kubectl/build-args.json
           cat kubectl/build-args.json

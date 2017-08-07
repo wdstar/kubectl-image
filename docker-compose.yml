@@ -7,5 +7,5 @@ services:
       context: ./
       args:
         KUBECTL_VER: ${KUBECTL_VER}
-    image: ${DOCKER_ID}/${NAME}:${TAG}
+    image: ${DOCKER_ID}/${NAME}:${KUBECTL_VER}
     #command: /bin/sh
