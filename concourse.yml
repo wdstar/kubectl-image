@@ -1,6 +1,6 @@
 ---
 # Concourse pipeline: kubectl-image
-#   $ fly -t target sp -p kubectl-image -c concourse.yml -l fly-vars.yml -l ~/sec/credentials-prod.yml
+#   $ fly -t $CC_TARGET sp -p kubectl-image -c concourse.yml -l fly-vars.yml -l ~/sec/credentials-prod.yml
 resource_types:
 - name: file-url
   type: docker-image
@@ -47,7 +47,7 @@ resources:
     #ca_certs:
     #  - domain: gitlab.io.example.com:5050
     #    cert: ((docker-reg-ca-cert))
-  check_every: 12h
+  check_every: 6h
 
 jobs:
 - name: build-img
